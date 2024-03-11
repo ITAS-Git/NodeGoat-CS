@@ -77,3 +77,19 @@ jobs:
         with:
           args: --severity-threshold=high
 
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm run cy:verify
+
+      - name: Semgrep Scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/security-audit
+
+      - name: Snyk Vulnerability Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
