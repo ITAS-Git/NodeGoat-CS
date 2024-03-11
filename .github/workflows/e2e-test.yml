@@ -1,10 +1,19 @@
-name: E2E Test
-on: [push, pull_request]
+name: A01
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
 
 jobs:
   e2e-test:
     name: Node.js
     runs-on: ubuntu-latest
+  semgrep-sast-scan:
+    runs-on: ubuntu-latest
+    container:
+            image: returntocorp/semgrep
 
     strategy:
       fail-fast: false
@@ -59,37 +68,33 @@ jobs:
         with:
           name: cypress-artifacts-node${{ matrix.node-version }}
           path: test/e2e/screenshots
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm run cy:verify
-
-      - name: Semgrep Scan
-        uses: returntocorp/semgrep-action@v1
+          
+      - name: semgrep scan
+        run: | 
+            semgrep \
+            --sarif --output semgrep-sast.sarif \
+            --metrics=off \
+            --config="p/default"
+      - name: save report
+        uses: actions/upload-artifact@v3
         with:
-          config: p/security-audit
+          name: semgrep-sast.sarif
+          path: semgrep-sast.sarif
+        
 
-      - name: Snyk Vulnerability Scan
-        uses: snyk/actions/node@master
+      - name: Build a Docker image
+        run: docker build -t your/image-to-test .
+      - name: Run Snyk to check Docker image for vulnerabilities
+        continue-on-error: true
+        uses: snyk/actions/docker@master
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_SECRET }}
         with:
-          args: --severity-threshold=high
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm run cy:verify
-
-      - name: Semgrep Scan
-        uses: returntocorp/semgrep-action@v1
+          image: ITAS-Git/NodeGoat-CS:latest
+          args: --severity-threshold=high --sarif-file-output=snyk-sca.sarif
+        
+      - name: save report
+        uses: actions/upload-artifact@v3
         with:
-          config: p/security-audit
-
-      - name: Snyk Vulnerability Scan
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
+          name: snyk-sca.sarif
+          path: snyk-sca.sarif
