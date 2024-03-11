@@ -1,3 +1,5 @@
+name: Build docker image and deploy to wmd docker servers
+
 on:
     push:
       branches: [ "master" ]
