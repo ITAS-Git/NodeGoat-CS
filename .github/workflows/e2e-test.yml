@@ -1,19 +1,10 @@
-name: A01
-
-on:
-    push:
-        branches: [ master ]
-    pull_request:
-        branches: [ master ]
+name: E2E Test
+on: [push, pull_request]
 
 jobs:
   e2e-test:
     name: Node.js
     runs-on: ubuntu-latest
-  semgrep-sast-scan:
-    runs-on: ubuntu-latest
-    container:
-            image: returntocorp/semgrep
 
     strategy:
       fail-fast: false
@@ -56,7 +47,7 @@ jobs:
           npm run test:ci -- --config video=true
 
       - name: Prepare cypress artifacts
-        if: failure() && (steps.test-suite.outcome == 'failaure')
+        if: failure() && (steps.test-suite.outcome == 'failure')
         working-directory: ./test/e2e
         run: >
           mkdir -p "screenshots" && find "screenshots" -mindepth 1 -maxdepth 1 -type d
@@ -68,33 +59,3 @@ jobs:
         with:
           name: cypress-artifacts-node${{ matrix.node-version }}
           path: test/e2e/screenshots
-          
-      - name: semgrep scan
-        run: | 
-            semgrep \
-            --sarif --output semgrep-sast.sarif \
-            --metrics=off \
-            --config="p/default"
-      - name: save report
-        uses: actions/upload-artifact@v3
-        with:
-          name: semgrep-sast.sarif
-          path: semgrep-sast.sarif
-        
-
-      - name: Build a Docker image
-        run: docker build -t your/image-to-test .
-      - name: Run Snyk to check Docker image for vulnerabilities
-        continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_SECRET }}
-        with:
-          image: ITAS-Git/NodeGoat-CS:latest
-          args: --severity-threshold=high --sarif-file-output=snyk-sca.sarif
-        
-      - name: save report
-        uses: actions/upload-artifact@v3
-        with:
-          name: snyk-sca.sarif
-          path: snyk-sca.sarif
