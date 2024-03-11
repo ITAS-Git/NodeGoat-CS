@@ -1,31 +1,75 @@
 name: Charlie - ITAS276 - Assignment 1
 
 on:
-    push:
-        branches: [ master ]
-    pull_request:
-        branches: [ master ]
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag charlieszafron/nodegoat-cs:latest
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag charlieszafron/nodegoat-cs:latest
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-    - name: Push to Docker Hub
-      run: |
-        docker push charlieszafron/nodegoat-cs:latest
+      - name: Push to Docker Hub
+        run: |
+          docker push charlieszafron/nodegoat-cs:latest
 
-    - name: Remove previous private image (optional)
-      run: docker rmi charlieszafron/nodegoat-cs:previous-tag
-      continue-on-error: true
+      - name: Remove previous private image (optional)
+        run: docker rmi charlieszafron/nodegoat-cs:previous-tag
+        continue-on-error: true
+
+  semgrep-sast-scan:
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
+            
+    steps:   
+      - uses: actions/checkout@v2
+
+      - name: Semgrep scan
+        run: | 
+          semgrep \
+          --sarif --output semgrep-sast.sarif \
+          --metrics=off \
+          --config="p/default"
+
+      - name: Save report
+        uses: actions/upload-artifact@v2
+        with:
+          name: semgrep-sast.sarif
+          path: semgrep-sast.sarif
+
+  snyk-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build a Docker image
+        run: docker build -t charlieszafron/nodegoat-cs:latest .
+
+      - name: Run Snyk to check Docker image for vulnerabilities
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_SECRET }}
+        with:
+          image: charlieszafron/nodegoat-cs:latest
+          args: --severity-threshold=high --sarif-file-output=snyk-sca.sarif
+        
+      - name: Save report
+        uses: actions/upload-artifact@v2
+        with:
+          name: snyk-sca.sarif
+          path: snyk-sca.sarif
