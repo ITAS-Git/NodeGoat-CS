@@ -42,7 +42,7 @@ jobs:
           semgrep \
           --sarif --output semgrep-sast.sarif \
           --metrics=off \
-          --config="p/r2c-ci"
+          --config="p/default"
 
       - name: Save Semgrep SARIF report
         uses: actions/upload-artifact@v2
