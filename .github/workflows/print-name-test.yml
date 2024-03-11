@@ -10,12 +10,11 @@ jobs:
     
     deploy:
         name: "Deploy to ITAS WMD server"
-        runs-on: [self-hosted, Linux, X64, itas276-cszafron]
-
+        runs-on: self-hosted
 
         steps:
             -   name: Copy source code files
-                uses: actions/checkout@v3
+                uses: actions/checkout@master
 
             -   name: Test files are visibile
                 # Execute some shell commands on your server (this is the self-hosted instance)
