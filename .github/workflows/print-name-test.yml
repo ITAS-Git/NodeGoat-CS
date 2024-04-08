@@ -1,4 +1,4 @@
-name: Build docker image and deploy to WMD docker servers
+name: A03 webhooks
 
 on:
  push:
@@ -7,19 +7,17 @@ on:
     branches: [ "master" ]
 
 jobs:
- deploy:
-    name: "Deploy to ITAS WMD server"
-    runs-on: itas276-cszafron
-
-    steps:
-      - name: Copy source code files
-        uses: actions/checkout@v3
-
-      - name: Test files are visible
-        run: |
-          whoami
-          ls -lah
-
-      - name: Build and run Docker containers
-        run: |
-          docker-compose up --build -d
+    # Post a message to the Discord channel with pipeline updates.
+    NodeGoat-Discord-Notification:
+      runs-on: ubuntu-latest
+      steps:
+       - name: Discord Notification
+         uses: tsickert/discord-webhook@v5.3.0
+         with:
+           webhook-url: ${{ secrets.DISCORD_WEBHOOK }} # Use the webhook URL kept in secrets
+           username: ${{ github.repository }}
+           avatar-url: https://gravatar.com/avatar/be5d3fe06696117c467f199ddb4f1aed?s=400&d=robohash&r=g
+           embed-title: "NodeGoat Pipeline jobs are starting..."
+           embed-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+           embed-description: "[Action details ${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+           embed-author-name: "${{ github.actor }}"
