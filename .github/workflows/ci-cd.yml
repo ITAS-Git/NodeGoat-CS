@@ -28,7 +28,7 @@ jobs:
         tags: charlieszafron/nodegoat-cs:latest
 
   semgrep-sast-scan:
-    runs-on: itas276-cszafron
+    runs-on: ubuntu-latest
     container:
       image: returntocorp/semgrep
 
@@ -49,7 +49,7 @@ jobs:
           path: semgrep-sast.sarif
 
   snyk-scan:
-    runs-on: itas276-cszafron
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
