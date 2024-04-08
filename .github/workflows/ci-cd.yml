@@ -1,26 +1,24 @@
-name: Charlie - ITAS276 - Assignment 1
+name: A03 webhooks
 
 on:
- push:
+  push:
     branches:
       - master
 
 jobs:
- build-push-scan:
-    runs-on: itas276-cszafron
+  build-push-scan:
+    runs-on: ubuntu-latest
 
     steps:
-    # Checkout repository code
     - name: Checkout code
       uses: actions/checkout@v2
 
-    # Log in to Docker Hub using the provided username and password
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-    # Build the Docker image and push it to Docker Hub
+
     - name: Build and Push Docker image
       uses: docker/build-push-action@v3
       with:
@@ -29,7 +27,7 @@ jobs:
         push: true
         tags: charlieszafron/nodegoat-cs:latest
 
- semgrep-sast-scan:
+  semgrep-sast-scan:
     runs-on: itas276-cszafron
     container:
       image: returntocorp/semgrep
@@ -50,7 +48,7 @@ jobs:
           name: semgrep-sast.sarif
           path: semgrep-sast.sarif
 
- snyk-scan:
+  snyk-scan:
     runs-on: itas276-cszafron
     steps:
       - uses: actions/checkout@v2
@@ -69,3 +67,17 @@ jobs:
         with:
           name: snyk-sca.sarif
           path: snyk-results.sarif
+
+  discord-notification:
+    runs-on: ubuntu-latest
+    needs: [build-push-scan, semgrep-sast-scan, snyk-scan]
+    steps:
+      - name: Post message to Discord
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          username: "GitHub Actions"
+          embed-title: "Workflow Status Update"
+          embed-description: "The workflow has completed successfully."
+          embed-color: "#00ff00" # Green color for success
+          thread-id: ${{ github.run_id }} # Use the GitHub run ID as thread ID
