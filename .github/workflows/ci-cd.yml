@@ -1,4 +1,4 @@
-name: A03 webhooks
+name: Build, Push, and Scan Docker Image
 
 on:
   push:
@@ -10,15 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout repository code
     - name: Checkout code
       uses: actions/checkout@v2
 
+    # Log in to Docker Hub
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
+    # Build Docker image & push it to Docker Hub
     - name: Build and Push Docker image
       uses: docker/build-push-action@v3
       with:
@@ -26,6 +29,19 @@ jobs:
         file: ./Dockerfile
         push: true
         tags: charlieszafron/nodegoat-cs:latest
+
+    # Post message to Discord when the build and push completes
+    - name: Discord Notification - Build and Push
+      if: always()
+      uses: tsickert/discord-webhook@v5.3.0
+      with:
+        webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+        username: ${{ github.repository }}
+        avatar-url: https://gravatar.com/avatar/be5d3fe06696117c467f199ddb4f1aed?s=400&d=robohash&r=g
+        embed-title: "Docker Build and Push completed"
+        embed-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        embed-description: "The Docker image has been built and pushed to Docker Hub."
+        embed-author-name: "${{ github.triggering_actor }}"
 
   semgrep-sast-scan:
     runs-on: ubuntu-latest
@@ -35,24 +51,40 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      # Semgrep SARIF report
       - name: Run Semgrep and generate SARIF report
         run: |
           semgrep \
           --sarif --output semgrep-sast.sarif \
           --metrics=off \
-          --config="p/default"
+          --config="p/r2c-ci"
 
-      - name: Save Semgrep SARIF report
+      # Upload report as artifact
+      - name: Upload Semgrep SARIF report
         uses: actions/upload-artifact@v2
         with:
           name: semgrep-sast.sarif
           path: semgrep-sast.sarif
+
+      # Post message to Discord when Semgrep scan completes
+      - name: Discord Notification - Semgrep SAST
+        if: always()
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ github.repository }}
+          avatar-url: https://gravatar.com/avatar/be5d3fe06696117c467f199ddb4f1aed?s=400&d=robohash&r=g
+          embed-title: "Semgrep SAST scan completed"
+          embed-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          embed-description: "The Semgrep SAST scan has completed. Download the SARIF report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+          embed-author-name: "${{ github.triggering_actor }}"
 
   snyk-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
+      # Run Snyk
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
         with:
@@ -62,28 +94,22 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
 
-      - name: Save Snyk SARIF report
+      # Upload report as artifact
+      - name: Upload Snyk SARIF report
         uses: actions/upload-artifact@v2
         with:
           name: snyk-sca.sarif
           path: snyk-results.sarif
 
-  discord-notification:
-    runs-on: ubuntu-latest
-    needs: [build-push-scan, semgrep-sast-scan, snyk-scan]
-    steps:
-      - name: Post message to Discord
+      # Post message to Discord when Snyk scan completes
+      - name: Discord Notification - Snyk Scan
+        if: always()
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-          username: "GitHub Actions"
-          content: "Workflow Status Update\nThe workflow has completed successfully."
-          embeds: |
-            [
-              {
-                "title": "Workflow Status Update",
-                "description": "The workflow has completed successfully.",
-                "color": 65280
-              }
-            ]
-          thread-id: ${{ github.run_id }} # Use the GitHub run ID as thread ID
+          username: ${{ github.repository }}
+          avatar-url: https://gravatar.com/avatar/be5d3fe06696117c467f199ddb4f1aed?s=400&d=robohash&r=g
+          embed-title: "Snyk scan completed"
+          embed-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          embed-description: "The Snyk scan has completed. Download the SARIF report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+          embed-author-name: "${{ github.triggering_actor }}"
