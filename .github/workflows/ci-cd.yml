@@ -77,7 +77,13 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           username: "GitHub Actions"
-          embed-title: "Workflow Status Update"
-          embed-description: "The workflow has completed successfully."
-          embed-color: "#00ff00" # Green color for success
+          content: "Workflow Status Update\nThe workflow has completed successfully."
+          embeds: |
+            [
+              {
+                "title": "Workflow Status Update",
+                "description": "The workflow has completed successfully.",
+                "color": 65280
+              }
+            ]
           thread-id: ${{ github.run_id }} # Use the GitHub run ID as thread ID
